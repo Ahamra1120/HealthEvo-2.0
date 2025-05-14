@@ -36,7 +36,7 @@ const Footer = () => {
             <ul className="space-y-2 text-gray-400">
               <li className="flex items-center">
                 <FontAwesomeIcon icon={faEnvelope} className="mr-2" />
-                <span>info@pintarp3k.id</span>
+                <span>healthevo@gmail.com</span>
               </li>
               <li className="flex items-center">
                 <FontAwesomeIcon icon={faPhone} className="mr-2" />
