@@ -20,18 +20,20 @@ const HomePage = () => {
         </div>
       </section>
 
-      {/* JISF 2025 Special Announcement */}
+      {/* Emergency Healthcare Services Warning */}
       <section className="py-6 bg-white">
         <div className="container mx-auto px-6">
-          <div className="bg-green-800 rounded-xl shadow-lg p-6 flex flex-col md:flex-row items-center">
+          <div className="bg-red-700 rounded-xl shadow-lg p-6 flex flex-col md:flex-row items-center">
             <div className="mr-0 md:mr-6 mb-4 md:mb-0 flex-shrink-0">
-              <img src="https://www.jisf.or.id/assets/logo/jisf.png" alt="JISF Logo" className="w-40 h-40 rounded-full bg-white p-1" />
+              <div className="w-40 h-40 rounded-full bg-white/10 flex items-center justify-center">
+                <FontAwesomeIcon icon={faHeartbeat} className="text-white text-6xl" />
+              </div>
             </div>
             <div className="flex-grow text-center md:text-left">
-              <h2 className="text-2xl font-bold text-white mb-2">Spesial untuk Pengunjung JISF 2025</h2>
-              <p className="text-green-100 mb-4">Anda berkesempatan mendapatkan cinderamata dari tim kami jika skor kuis anda mencapai <b>10 dari 10!</b></p>
-              <Link to="/kuis" className="inline-block bg-white text-green-800 font-semibold px-6 py-3 rounded-full hover:bg-green-100 transition duration-300">
-                MULAI KUIS
+              <h2 className="text-2xl font-bold text-white mb-2">Layanan Darurat Kesehatan</h2>
+              <p className="text-red-100 mb-4">Temukan informasi dan lokasi fasilitas kesehatan terdekat untuk <b>situasi darurat</b>. Kami menyediakan data rumah sakit, puskesmas, dan klinik di sekitar Anda.</p>
+              <Link to="/lokasi" className="inline-block bg-white text-red-700 font-semibold px-6 py-3 rounded-full hover:bg-red-50 transition duration-300">
+                CARI FASKES TERDEKAT
               </Link>
             </div>
           </div>
