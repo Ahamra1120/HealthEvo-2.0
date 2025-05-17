@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState, useCallback } from 'react';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import 'leaflet.markercluster/dist/MarkerCluster.css';
@@ -13,12 +13,13 @@ L.Icon.Default.mergeOptions({
   shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
 });
 
-const LocationMap = ({ facilities, userLocation }) => {
+const LocationMap = ({ facilities, userLocation, onSearchNearbyFacilities }) => {
   const mapRef = useRef(null);
   const mapInstanceRef = useRef(null);
   const markersRef = useRef(null);
   const facilitiesRef = useRef({});
   const [selectedFacility, setSelectedFacility] = useState(null);
+  const [searchRadius, setSearchRadius] = useState(2000); // Default 2km radius
 
   // Initialize map
   useEffect(() => {
@@ -41,6 +42,9 @@ const LocationMap = ({ facilities, userLocation }) => {
       // Initialize markers cluster group
       const markers = L.markerClusterGroup();
       map.addLayer(markers);
+
+      // Add event listener for map movement to detect new area
+      map.on('moveend', handleMapMoveEnd);
       
       // Store references
       mapInstanceRef.current = map;
@@ -49,12 +53,48 @@ const LocationMap = ({ facilities, userLocation }) => {
     
     return () => {
       if (mapInstanceRef.current) {
+        mapInstanceRef.current.off('moveend', handleMapMoveEnd);
         mapInstanceRef.current.remove();
         mapInstanceRef.current = null;
         markersRef.current = null;
       }
     };
   }, []);
+
+  // Handle map movement to search for facilities in current view
+  const handleMapMoveEnd = useCallback(() => {
+    if (mapInstanceRef.current) {
+      const center = mapInstanceRef.current.getCenter();
+      
+      // Search for facilities near the map center
+      if (onSearchNearbyFacilities) {
+        onSearchNearbyFacilities({
+          lat: center.lat,
+          lng: center.lng,
+          radius: searchRadius
+        });
+      }
+    }
+  }, [onSearchNearbyFacilities, searchRadius]);
+
+  // Update search radius and re-search when it changes
+  const updateSearchRadius = useCallback((newRadius) => {
+    setSearchRadius(newRadius);
+    
+    if (mapInstanceRef.current && userLocation && onSearchNearbyFacilities) {
+      // Update search radius circle if it exists
+      if (mapInstanceRef.current.searchRadiusCircle) {
+        mapInstanceRef.current.searchRadiusCircle.setRadius(newRadius);
+      }
+      
+      // Re-trigger search with new radius
+      onSearchNearbyFacilities({
+        lat: userLocation.lat,
+        lng: userLocation.lng,
+        radius: newRadius
+      });
+    }
+  }, [userLocation, onSearchNearbyFacilities]);
 
   // Update user location on map
   useEffect(() => {
@@ -68,9 +108,13 @@ const LocationMap = ({ facilities, userLocation }) => {
         mapInstanceRef.current.removeLayer(mapInstanceRef.current.userCircle);
       }
       
-      // Create user location marker
+      if (mapInstanceRef.current.searchRadiusCircle) {
+        mapInstanceRef.current.removeLayer(mapInstanceRef.current.searchRadiusCircle);
+      }
+      
+      // Create user location marker with pulse animation
       const userIcon = L.divIcon({
-        html: '<div class="w-4 h-4 bg-blue-500 rounded-full border-2 border-white shadow-md"></div>',
+        html: '<div class="w-4 h-4 bg-blue-500 rounded-full border-2 border-white shadow-md pulse-animation"></div>',
         className: 'user-location-marker',
         iconSize: [20, 20],
         iconAnchor: [10, 10]
@@ -95,14 +139,34 @@ const LocationMap = ({ facilities, userLocation }) => {
         weight: 1
       }).addTo(mapInstanceRef.current);
       
+      // Add search radius circle
+      const searchRadiusCircle = L.circle([userLocation.lat, userLocation.lng], {
+        radius: searchRadius,
+        color: '#22C55E',
+        fillColor: '#22C55E',
+        fillOpacity: 0.05,
+        weight: 2,
+        dashArray: '5, 5',
+      }).addTo(mapInstanceRef.current);
+      
       // Store references
       mapInstanceRef.current.userMarker = userMarker;
       mapInstanceRef.current.userCircle = userCircle;
+      mapInstanceRef.current.searchRadiusCircle = searchRadiusCircle;
       
       // Center map on user location
       mapInstanceRef.current.setView([userLocation.lat, userLocation.lng], 14);
+      
+      // Trigger search for nearby facilities
+      if (onSearchNearbyFacilities) {
+        onSearchNearbyFacilities({
+          lat: userLocation.lat,
+          lng: userLocation.lng,
+          radius: searchRadius
+        });
+      }
     }
-  }, [userLocation]);
+  }, [userLocation, searchRadius, onSearchNearbyFacilities]);
 
   // Update facilities markers on map
   useEffect(() => {
@@ -179,6 +243,11 @@ const LocationMap = ({ facilities, userLocation }) => {
     
     marker.bindPopup(popupContent);
     
+    // Add click handler to select facility
+    marker.on('click', () => {
+      setSelectedFacility(facility);
+    });
+    
     // Add marker to the markers cluster group
     markersRef.current.addLayer(marker);
     
@@ -222,7 +291,30 @@ const LocationMap = ({ facilities, userLocation }) => {
   return (
     <div className="w-full md:w-3/5">
       <div className="bg-white rounded-xl shadow-md p-4">
-        <div id="map" ref={mapRef}></div>
+        <div className="mb-3 flex items-center justify-between">
+          <span className="text-sm font-medium text-gray-700">Radius pencarian: {formatDistance(searchRadius)}</span>
+          <div className="flex space-x-2">
+            <button 
+              onClick={() => updateSearchRadius(1000)}
+              className={`px-2 py-1 text-xs rounded ${searchRadius === 1000 ? 'bg-blue-500 text-white' : 'bg-gray-200'}`}
+            >
+              1 km
+            </button>
+            <button 
+              onClick={() => updateSearchRadius(2000)}
+              className={`px-2 py-1 text-xs rounded ${searchRadius === 2000 ? 'bg-blue-500 text-white' : 'bg-gray-200'}`}
+            >
+              2 km
+            </button>
+            <button 
+              onClick={() => updateSearchRadius(5000)}
+              className={`px-2 py-1 text-xs rounded ${searchRadius === 5000 ? 'bg-blue-500 text-white' : 'bg-gray-200'}`}
+            >
+              5 km
+            </button>
+          </div>
+        </div>
+        <div id="map" ref={mapRef} className="h-[400px] rounded-lg"></div>
       </div>
     </div>
   );
